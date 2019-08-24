@@ -10,6 +10,10 @@ The above copyright notice and this permission notice shall be included in all c
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
+/*
+ 	modified by nomisum for gruppe adler
+*/
+
 ASL_Advanced_Sling_Loading_Install = {
 
 // Prevent advanced sling loading from installing twice
@@ -19,13 +23,18 @@ ASL_ROPE_INIT = true;
 diag_log "Advanced Sling Loading Loading...";
 
 ASL_Rope_Get_Lift_Capability = {
-	params ["_vehicle"];
-	private ["_slingLoadMaxCargoMass"];
-	_slingLoadMaxCargoMass = getNumber (configFile >> "CfgVehicles" >> typeOf _vehicle >> "slingLoadMaxCargoMass");
-	if(_slingLoadMaxCargoMass <= 0) then {
-		_slingLoadMaxCargoMass = 4000;
-	};
-	_slingLoadMaxCargoMass;	
+    params ["_vehicle"];
+    private ["_slingLoadMaxCargoMass"];
+    _slingLoadMaxCargoMass = getNumber (configFile >> "CfgVehicles" >> typeOf _vehicle >> "slingLoadMaxCargoMass");
+    if(_slingLoadMaxCargoMass <= 0) then {
+        _slingLoadMaxCargoMass = 4000;
+    };
+    private _override = _vehicle getVariable ["GRAD_slingLoadMaxCargoMass", -1];
+    if (_override > -1) then {
+    	_slingLoadMaxCargoMass = _override;
+    };
+
+    _slingLoadMaxCargoMass; 
 };
 
 ASL_SLING_LOAD_POINT_CLASS_HEIGHT_OFFSET = [  
@@ -761,9 +770,9 @@ ASL_Attach_Ropes = {
 					_allCargo = _vehicle getVariable ["ASL_Cargo",[]];
 					_allCargo set [(_vehicleWithIndex select 1),_cargo];
 					_vehicle setVariable ["ASL_Cargo",_allCargo, true];
-					if(missionNamespace getVariable ["ASL_HEAVY_LIFTING_ENABLED",true]) then {
-						[_cargo, _vehicle, _ropes] spawn ASL_Rope_Adjust_Mass;		
-					};				
+					if(_vehicle getVariable ["ASL_HEAVY_LIFTING_ENABLED",true]) then {
+                        [_cargo, _vehicle, _ropes] spawn ASL_Rope_Adjust_Mass;      
+                    };  				
 				};
 			};
 		} else {
@@ -1059,17 +1068,20 @@ ASL_Add_Player_Actions = {
 		[] call ASL_Deploy_Ropes_Action;
 	}, nil, 0, false, true, "", "call ASL_Deploy_Ropes_Action_Check"];
 
-	player addAction ["Attach To Cargo Ropes", { 
-		[] call ASL_Attach_Ropes_Action;
-	}, nil, 0, false, true, "", "call ASL_Attach_Ropes_Action_Check"];
 
-	player addAction ["Drop Cargo Ropes", { 
-		[] call ASL_Drop_Ropes_Action;
-	}, nil, 0, false, true, "", "call ASL_Drop_Ropes_Action_Check"];
+	if (player getVariable ["GRAD_isTechnician", false]) then {
+		player addAction ["Pickup Cargo Ropes", { 
+			[] call ASL_Pickup_Ropes_Action;
+		}, nil, 0, false, true, "", "call ASL_Pickup_Ropes_Action_Check"];
 
-	player addAction ["Pickup Cargo Ropes", { 
-		[] call ASL_Pickup_Ropes_Action;
-	}, nil, 0, false, true, "", "call ASL_Pickup_Ropes_Action_Check"];
+		player addAction ["Drop Cargo Ropes", { 
+			[] call ASL_Drop_Ropes_Action;
+		}, nil, 0, false, true, "", "call ASL_Drop_Ropes_Action_Check"];
+
+		player addAction ["Attach To Cargo Ropes", { 
+			[] call ASL_Attach_Ropes_Action;
+		}, nil, 0, false, true, "", "call ASL_Attach_Ropes_Action_Check"];
+	};
 
 	player addEventHandler ["Respawn", {
 		player setVariable ["ASL_Actions_Loaded",false];
